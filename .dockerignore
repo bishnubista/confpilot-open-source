@@ -1,0 +1,55 @@
+# What must not enter the build context.
+#
+# Two separate reasons, and the second is the one that matters. Excluding build
+# output and caches keeps the context small. Excluding secrets keeps them out of
+# the image entirely — a `COPY . .` puts every file in a layer, and a layer is
+# readable by anyone who can pull the image, whether or not the final stage
+# still references it.
+
+# Installed dependencies. Copying the host's would also mean copying its native
+# builds, which are compiled for the wrong platform and make the install inside
+# the image inconsistent with its own lockfile.
+node_modules
+**/node_modules
+
+# Build output, regenerated inside the image.
+dist
+dist-node
+**/dist
+**/dist-node
+.wrangler
+
+# Secrets and local configuration. None of these belong in a layer.
+.env
+.env.*
+!.env.example
+**/.dev.vars
+**/.dev.vars.*
+!**/.dev.vars.example
+# Registry credentials: an .npmrc routinely carries an auth token, and the build
+# uses the lockfile rather than a private registry.
+**/.npmrc
+# Keys and certificates, by extension rather than by name — the risk is the file
+# somebody drops in while debugging TLS, which will not be called anything known.
+*.pem
+*.key
+*.crt
+*.pfx
+*.p12
+id_rsa*
+id_ed25519*
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+
+# The maintainer's private braindump, ignored globally in git and never shipped.
+initial-idea.md
+
+# History and tooling that the build has no use for.
+.git
+.github
+.claude
+.remember
+.codex
+coverage
+*.log

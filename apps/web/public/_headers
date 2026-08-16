@@ -1,0 +1,94 @@
+# Generated from apps/api/src/runtime/security-headers.ts.
+# Do not edit by hand — run `pnpm --filter @confpilot/api headers:generate`.
+#
+# Cloudflare is the only host that reads this file. A Node or container host
+# resolves the same policy through headersForPath(), and `pnpm check` fails if
+# the two ever disagree.
+
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), geolocation=(), microphone=()
+  Strict-Transport-Security: max-age=31536000
+  Content-Security-Policy: default-src 'self'; script-src 'self' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: https:; connect-src 'self' https://challenges.cloudflare.com; frame-src 'self' https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'; form-action 'self'
+
+/admin
+  Content-Security-Policy: frame-ancestors 'none'
+  X-Frame-Options: DENY
+
+/admin/*
+  Content-Security-Policy: frame-ancestors 'none'
+  X-Frame-Options: DENY
+
+/events/:event/admin
+  Content-Security-Policy: frame-ancestors 'none'
+  X-Frame-Options: DENY
+
+/events/:event/admin/*
+  Content-Security-Policy: frame-ancestors 'none'
+  X-Frame-Options: DENY
+
+/submit
+  Content-Security-Policy: frame-ancestors 'none'
+  X-Frame-Options: DENY
+
+/events/:event/submit
+  Content-Security-Policy: frame-ancestors 'none'
+  X-Frame-Options: DENY
+
+/events/:event/submit/*
+  Content-Security-Policy: frame-ancestors 'none'
+  X-Frame-Options: DENY
+
+/reviewer
+  Content-Security-Policy: frame-ancestors 'none'
+  X-Frame-Options: DENY
+
+/reviewer/*
+  Content-Security-Policy: frame-ancestors 'none'
+  X-Frame-Options: DENY
+
+/events/:event/reviewer
+  Content-Security-Policy: frame-ancestors 'none'
+  X-Frame-Options: DENY
+
+/events/:event/reviewer/*
+  Content-Security-Policy: frame-ancestors 'none'
+  X-Frame-Options: DENY
+
+/speaker-portal
+  Content-Security-Policy: frame-ancestors 'none'
+  X-Frame-Options: DENY
+
+/events/:event/speaker
+  Content-Security-Policy: frame-ancestors 'none'
+  X-Frame-Options: DENY
+
+/events/:event/speaker/*
+  Content-Security-Policy: frame-ancestors 'none'
+  X-Frame-Options: DENY
+
+/reviewer-invitation
+  Content-Security-Policy: frame-ancestors 'none'
+  X-Frame-Options: DENY
+
+/speaker-claim
+  Content-Security-Policy: frame-ancestors 'none'
+  X-Frame-Options: DENY
+
+# Vite emits /assets/* with a content hash in every filename, so a URL there is
+# permanently 1:1 with its bytes and can be cached indefinitely. Without this,
+# every repeat visit revalidates each script and stylesheet before the page can
+# render; with it, a returning visitor makes no asset request at all.
+#
+# The SPA fallback does return index.html with a 200 for an asset URL that no
+# longer exists, but that is not an argument against this rule: it already
+# happens under the must-revalidate default, and X-Content-Type-Options above
+# means a browser refuses to execute an HTML body as a module script. It fails
+# visibly rather than being cached as JavaScript. index.html itself deliberately
+# has no rule here, so it keeps must-revalidate and picks up deploys immediately.
+#
+# Do not widen this to /*. The guarantee comes from the content hash, which only
+# files under /assets/ have.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable

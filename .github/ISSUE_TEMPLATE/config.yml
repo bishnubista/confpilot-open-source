@@ -1,0 +1,9 @@
+blank_issues_enabled: false
+
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/bishnubista/confpilot-open-source/security/advisories/new
+    about: Never report a vulnerability in a public issue. Use the private advisory channel, and read SECURITY.md first.
+  - name: Self-hosting setup help
+    url: https://github.com/bishnubista/confpilot-open-source/blob/main/docs/self-hosting/cloudflare.md
+    about: Read the operator guide before filing. It covers resource order, cost boundaries, migrations, and rollback.

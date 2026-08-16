@@ -1,0 +1,49 @@
+{
+  "name": "@confpilot/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "dev:worker": "wrangler dev",
+    "build": "pnpm --dir ../web build && pnpm build:worker",
+    "build:worker": "wrangler deploy --dry-run --outdir dist",
+    "build:node": "esbuild src/server.ts --bundle --platform=node --format=esm --target=node22 --external:better-sqlite3 --outfile=dist-node/server.mjs",
+    "start:node": "node --env-file-if-exists=.env dist-node/server.mjs",
+    "verify:node": "node ./scripts/verify-node-host.mjs",
+    "headers:generate": "node --experimental-strip-types ./scripts/generate-static-headers.mjs",
+    "headers:check": "node --experimental-strip-types ./scripts/generate-static-headers.mjs --check",
+    "deploy:agent-install-config": "node ./scripts/agent-install-config.mjs",
+    "deploy:preflight": "node ./scripts/validate-deploy-config.mjs",
+    "deploy:verify-artifact": "node ./scripts/verify-deploy-artifact.mjs",
+    "deploy:verify-live": "node ./scripts/verify-deployment.mjs",
+    "check": "pnpm typecheck && pnpm test",
+    "typecheck": "tsc --noEmit && tsc --noEmit --project tsconfig.node.json",
+    "test": "vitest run",
+    "db:migrate:local": "wrangler d1 migrations apply confpilot-db --local",
+    "db:prepare-remote-migration": "node ./scripts/prepare-remote-migration.mjs",
+    "db:prepare-preview-credentials": "node --experimental-strip-types ./scripts/prepare-preview-credentials.mjs",
+    "db:prepare-bootstrap": "node --experimental-strip-types ./scripts/bootstrap-instance.mjs",
+    "db:prepare-member": "node --experimental-strip-types ./scripts/provision-member.mjs",
+    "db:apply-sqlite-artifact": "node ./scripts/apply-sqlite-artifact.mjs",
+    "db:preflight:auth:local": "wrangler d1 execute confpilot-db --local --file=./preflight/preflight_auth_credentials.sql",
+    "db:seed:local": "wrangler d1 execute confpilot-db --local --file=./seed/seed.sql && wrangler d1 execute confpilot-db --local --file=./seed/agenda.sql"
+  },
+  "dependencies": {
+    "@confpilot/contracts": "workspace:*",
+    "@hono/node-server": "^2.1.1",
+    "better-sqlite3": "^13.0.3",
+    "hono": "^4.13.1"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260810.1",
+    "@confpilot/web": "workspace:*",
+    "@types/better-sqlite3": "^9.6.0",
+    "@types/node": "^26.2.0",
+    "esbuild": "^0.28.2",
+    "miniflare": "4.20260730.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18",
+    "wrangler": "4.118.0"
+  }
+}

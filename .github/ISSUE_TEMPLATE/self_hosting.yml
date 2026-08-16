@@ -1,0 +1,71 @@
+name: Self-hosting problem
+description: An install, upgrade, backup, or restore step did not work as documented.
+labels: [self-hosting]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Never paste account identifiers, database IDs, secrets, tokens, private hostnames, or real attendee data. Redact before submitting.
+
+        ConfPilot is Cloudflare-first. Docker, Kubernetes, Postgres, S3, and standalone Node are not supported targets, and requests to add them belong in a feature discussion rather than here.
+
+  - type: dropdown
+    id: stage
+    attributes:
+      label: Which step
+      options:
+        - Creating Cloudflare resources
+        - Applying migrations
+        - Bootstrap artifact (db:prepare-bootstrap)
+        - Member provisioning (db:prepare-member)
+        - Building or deploying the Worker
+        - Sign-in on a deployed instance
+        - Upgrade
+        - Backup or restore
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: ConfPilot version
+      description: Provide the release tag, commit SHA, or deployed Worker version that showed the problem.
+      placeholder: v0.1.0, 0123456789abcdef, or Worker version ID
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What the docs said, and what happened
+      description: Quote the documented step you followed and the exact result. Include the doc file name.
+    validations:
+      required: true
+
+  - type: textarea
+    id: error
+    attributes:
+      label: Redacted error output
+      description: Include the `x-request-id` for API errors, or the SQLite constraint name for migration and artifact failures.
+
+  - type: textarea
+    id: local_checks
+    attributes:
+      label: Local verification results
+      description: For each of `pnpm run check`, `pnpm test`, and `pnpm build`, say passed, failed, or not run. Include redacted failure output when a command failed.
+      placeholder: |
+        pnpm run check: passed
+        pnpm test: failed — <redacted output>
+        pnpm build: not run
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: prechecks
+    attributes:
+      label: Confirmed before filing
+      options:
+        - label: I did not apply `seed/seed.sql` or `seed/agenda.sql` to this instance.
+          required: true
+        - label: I have removed every credential, account ID, and private URL from this report.
+          required: true

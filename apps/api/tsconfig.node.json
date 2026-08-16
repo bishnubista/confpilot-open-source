@@ -1,0 +1,16 @@
+{
+  // Node-host code, type-checked against Node's APIs.
+  //
+  // The main tsconfig deliberately exposes only `@cloudflare/workers-types`, so
+  // Worker code cannot reach for a Node API and still compile. Adding Node types
+  // there would silently remove that guarantee for every file. Instead the few
+  // modules that genuinely target the Node host are checked here, and excluded
+  // from the Worker project.
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2023"],
+    "types": ["node", "vitest/globals"],
+    "noEmit": true
+  },
+  "include": ["src/runtime/filesystem-file-store.ts", "src/host/**/*.ts", "src/server.ts"]
+}

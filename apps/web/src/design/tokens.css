@@ -1,0 +1,68 @@
+/*
+ * Fonts are self-hosted. This @import is local, so Vite inlines it at build
+ * time — unlike the remote @import this replaced, which sat at byte 0 of the
+ * built stylesheet and could not even be discovered until the whole ~105 kB CSS
+ * bundle had downloaded and begun parsing.
+ */
+@import './fonts.css';
+
+:root {
+  color-scheme: light;
+
+  /* Brand and interface color */
+  --navy-950: #060a14;
+  --navy-900: #0a1020;
+  --navy-800: #141c31;
+  --navy-700: #202b45;
+  --paper: #f6f7fb;
+  --surface: #ffffff;
+  --surface-muted: #eef1f7;
+  --line: #d8dde8;
+  --line-strong: #aeb8ca;
+  --text: #0a1020;
+  --muted: #5f6b7f;
+  --quiet: #8590a4;
+  --signal: #ffd84d;
+  --signal-hover: #f4ca2d;
+  --action: #2f5bff;
+  --action-hover: #2149dc;
+  --success: #0f6b45;
+  --success-soft: #e3f3eb;
+  --warning: #9a6500;
+  --warning-soft: #fff1c2;
+  --danger: #d42a3e;
+  --danger-soft: #fde9ec;
+  --track-blue: #1f4fe0;
+  --track-teal: #0c6e6e;
+  --track-violet: #6a2bd9;
+
+  /* Type */
+  --font-display: 'Barlow Condensed', 'Arial Narrow', sans-serif;
+  --font-body: 'IBM Plex Sans', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', monospace;
+
+  /* Claude Design type roles — invariant at 390, 768, and 1280 */
+  --type-admin-h1: 32px;
+  --type-stage-h2: 30px;
+  --type-card-title: 22px;
+  --type-public-masthead: 39px;
+  --type-public-h2: 30px;
+  --type-public-row: 22px;
+  --type-public-detail: 36px;
+
+  /* Geometry and rhythm */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --control-height: 44px;
+  --content-max: 1440px;
+  --focus: 0 0 0 2px var(--surface), 0 0 0 4px var(--action);
+}

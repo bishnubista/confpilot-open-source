@@ -1,0 +1,11 @@
+packages:
+  - "apps/web"
+  - "apps/api"
+  - "packages/*"
+
+allowBuilds:
+  # Native module. Needed only to run the database conformance suite against a
+  # second driver; it is never imported by the Worker entry.
+  better-sqlite3: true
+  esbuild: true
+  workerd: true

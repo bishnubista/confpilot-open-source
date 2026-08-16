@@ -1,0 +1,52 @@
+ConfPilot
+Copyright (C) 2026 bishnubista
+
+This program is free software: you can redistribute it and/or modify it under
+the terms of the GNU Affero General Public License as published by the Free
+Software Foundation, either version 3 of the License, or (at your option) any
+later version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE. See the GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License along
+with this program. If not, see <https://www.gnu.org/licenses/>.
+
+The full license text is in the LICENSE file at the root of this repository.
+
+
+NETWORK USE
+-----------
+
+Section 13 of the AGPL applies to this project because it is normally operated
+as a network service. If you run a modified version of ConfPilot and let other
+people use it over a network, you must offer those users the Corresponding
+Source of your modified version.
+
+Running an unmodified copy creates no additional obligation beyond keeping the
+license and copyright notices intact. Operators of modified instances should
+publish their source and link to it from the running application. See
+docs/licensing.md for what this means in practice.
+
+
+THIRD-PARTY COMPONENTS
+----------------------
+
+ConfPilot depends on third-party packages distributed under their own licenses.
+Those licenses continue to govern those components; this project's license
+applies to ConfPilot's own source.
+
+The exact production dependency graph resolved from pnpm-lock.yaml and the full
+license text shipped by each production package are checked into
+THIRD_PARTY_NOTICES.md. The current production graph is MIT-licensed. Installed
+development dependencies are also audited against the lockfile and the
+reviewed-compatible license list.
+
+Reproduce this list with:
+
+    pnpm install --frozen-lockfile
+    node scripts/audit-licenses.mjs
+
+After an intentional lockfile update, regenerate and review the checked-in
+notice with `node scripts/audit-licenses.mjs --write-notice`.

@@ -1,0 +1,74 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  // Generic self-host starting point. Customize resource names and keep account IDs
+  // and secrets in an ignored environment-specific copy.
+  "name": "confpilot",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-08-06",
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  },
+  "limits": {
+    "cpu_ms": 1000
+  },
+  // The binding and schedule are inert until EMAIL_DELIVERY_ENABLED is explicitly
+  // changed to true and a valid sender identity plus activation cutoff are
+  // configured for this instance. The cutoff prevents historical queue drain.
+  "send_email": [
+    { "name": "EMAIL" }
+  ],
+  "triggers": {
+    "crons": ["*/5 * * * *"]
+  },
+  // CLIENT_IP_SOURCE declares what sits in front of the deployment, which is what
+  // decides whether `cf-connecting-ip` may be believed when throttling by source.
+  // It is set here rather than defaulted in code because the header is only
+  // trustworthy when Cloudflare's edge overwrites it — a property of *this*
+  // deployment, not of the header. A Node or container host leaves it unset and
+  // trusts nothing, so a forged header cannot buy a fresh rate-limit bucket.
+  "vars": {
+    "CLIENT_IP_SOURCE": "cloudflare",
+    "EMAIL_DELIVERY_ENABLED": "false"
+  },
+  // Required for production: add a stable CALENDAR_UID_DOMAIN to the existing
+  // top-level `vars` block in the ignored environment-specific copy, preserving
+  // EMAIL_DELIVERY_ENABLED in that same block. Choose the domain once before
+  // deployment so calendar event identities do not change between hostnames.
+  // It is not an assets setting.
+  "assets": {
+    "directory": "../web/dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    // /llms.txt is generated from published event rows, so it must reach the
+    // Worker rather than being served from the static asset directory.
+    "run_worker_first": ["/api", "/api/*", "/llms.txt"]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "confpilot-db",
+      // Placeholder. Replace with the real ID returned when the remote D1 database is created.
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "FILES",
+      "bucket_name": "confpilot-files"
+    }
+  ],
+  "ratelimits": [
+    {
+      "name": "LOGIN_SOURCE_RATE_LIMITER",
+      "namespace_id": "1001",
+      "simple": { "limit": 20, "period": 60 }
+    },
+    {
+      "name": "LOGIN_ACCOUNT_RATE_LIMITER",
+      "namespace_id": "1002",
+      "simple": { "limit": 5, "period": 60 }
+    }
+  ]
+}

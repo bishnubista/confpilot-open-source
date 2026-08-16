@@ -1,0 +1,50 @@
+# Copy to .dev.vars for local development. Never commit real keys.
+# Cloudflare's visible always-pass test pair is safe only for local development
+# and automated tests; replace it with a real widget and secret in production.
+# https://developers.cloudflare.com/turnstile/troubleshooting/testing/
+TURNSTILE_SITE_KEY=1x00000000000000000000AA
+TURNSTILE_SECRET_KEY=1x0000000000000000000000000000000AA
+TURNSTILE_ALLOWED_HOSTNAMES=localhost,127.0.0.1
+
+
+# Optional. Stable domain used after @ in exported calendar event UIDs.
+# If omitted, ConfPilot uses the request hostname.
+CALENDAR_UID_DOMAIN=localhost
+
+# Where the source for THIS instance can be obtained. AGPL section 13 requires a
+# network service to offer the corresponding source of the version it is actually
+# running, so the upstream URL below is only correct for an unmodified deployment.
+#
+# If you have modified ConfPilot at all, replace this with your own repository or
+# revision — the one containing the code you are serving. Leaving it pointing at
+# upstream would offer users source that is not what they are using.
+SOURCE_URL=https://github.com/bishnubista/confpilot-open-source
+
+# What sits in front of this deployment. Decides which header may be believed
+# when attributing a caller for rate limiting, and nothing else.
+#
+#   cloudflare  behind Cloudflare, which overwrites cf-connecting-ip
+#   forwarded   behind a proxy you control that OVERWRITES x-forwarded-for
+#   none        directly exposed, or unknown (the default)
+#
+# Every candidate header is client-settable. cf-connecting-ip is trustworthy on
+# Cloudflare only because the edge overwrites whatever the client sent — that is
+# a property of the deployment, not the header. Declaring "cloudflare" on a host
+# that is not behind Cloudflare, or "forwarded" behind a proxy that merely
+# APPENDS rather than overwrites, lets a client forge its own throttling identity
+# and bypass per-source login limits entirely.
+#
+# Unset or unrecognised means trust nothing: every caller shares one bucket,
+# which over-throttles rather than failing open.
+CLIENT_IP_SOURCE=none
+
+# Outbound email remains disabled unless all five conditions are met: this flag
+# is true, the EMAIL binding exists, both sender fields are valid, and the
+# activation cutoff is an exact UTC timestamp. Only snapshots created at or
+# after that cutoff are eligible, preventing an accidental historical-backlog
+# drain. Local development must not use a real recipient unless an operator
+# explicitly opts in.
+EMAIL_DELIVERY_ENABLED=false
+EMAIL_DELIVERY_SEND_AFTER=YYYY-MM-DDTHH:MM:SSZ
+EMAIL_FROM_ADDRESS=noreply@example.invalid
+EMAIL_FROM_NAME=ConfPilot

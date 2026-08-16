@@ -1,0 +1,15 @@
+{
+  "name": "confpilot",
+  "version": "0.0.0",
+  "private": true,
+  "packageManager": "pnpm@11.16.0",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @confpilot/web build:development && pnpm --parallel --filter @confpilot/web --filter @confpilot/api run dev:worker",
+    "check": "pnpm --filter @confpilot/contracts run check && pnpm --filter @confpilot/web run check && pnpm --filter @confpilot/api run typecheck && pnpm --filter @confpilot/api run headers:check && node scripts/audit-licenses.mjs",
+    "test": "node --test scripts/*.test.mjs && pnpm --recursive --if-present run test",
+    "build": "pnpm --filter @confpilot/web build && pnpm --filter @confpilot/api build:worker"
+  }
+}

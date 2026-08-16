@@ -1,0 +1,12 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2023"],
+    "types": ["@cloudflare/workers-types", "vitest/globals"],
+    "noEmit": true
+  },
+  // Node-host modules are checked by tsconfig.node.json instead, so this
+  // project keeps Workers-only types and cannot compile a stray Node import.
+  "include": ["src/**/*.ts", "test/**/*.ts"],
+  "exclude": ["src/runtime/filesystem-file-store.ts", "src/host", "src/server.ts"]
+}

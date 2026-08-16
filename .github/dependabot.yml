@@ -1,0 +1,25 @@
+version: 2
+
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      # One PR per ecosystem keeps the CI gate meaningful; a dozen single-dependency
+      # PRs a week get rubber-stamped, which is how a supply-chain change slips in.
+      development:
+        dependency-type: development
+        update-types: [minor, patch]
+      production:
+        dependency-type: production
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3
+    # Workflow actions are pinned to commit SHAs. Dependabot updates the SHA and
+    # the version comment together; never replace a SHA with a floating tag.

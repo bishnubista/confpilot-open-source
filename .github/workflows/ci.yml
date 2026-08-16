@@ -1,0 +1,90 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Enable pnpm
+        run: corepack enable
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Check
+        run: pnpm run check
+
+      - name: Test
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
+        env:
+          VITE_SOURCE_URL: ${{ github.server_url }}/${{ github.repository }}
+
+      - name: Build and smoke the Node host
+        run: |
+          pnpm --filter @confpilot/api build:node
+          pnpm --filter @confpilot/api verify:node
+        env:
+          SOURCE_URL: ${{ github.server_url }}/${{ github.repository }}
+
+      - name: Validate the container definition
+        run: docker compose config >/dev/null
+        env:
+          PUBLIC_ORIGIN: https://confpilot.example.test
+          SOURCE_URL: ${{ github.server_url }}/${{ github.repository }}
+
+      - name: Build and smoke the container
+        run: |
+          docker build --build-arg SOURCE_URL="$SOURCE_URL" --tag confpilot-ci .
+          docker run --detach --name confpilot-ci \
+            --env PUBLIC_ORIGIN=http://127.0.0.1:8787 \
+            --publish 127.0.0.1:8787:8787 confpilot-ci
+          for attempt in $(seq 1 80); do
+            if curl --fail --silent http://127.0.0.1:8787/llms.txt > /tmp/confpilot-llms.txt; then break; fi
+            sleep 1
+          done
+          grep --fixed-strings "$SOURCE_URL" /tmp/confpilot-llms.txt
+          mutation_status="$(curl --silent --output /tmp/confpilot-login.json --write-out '%{http_code}' \
+            --request POST http://127.0.0.1:8787/api/auth/login \
+            --header 'Content-Type: application/json' \
+            --header 'Origin: http://127.0.0.1:8787' \
+            --header 'Sec-Fetch-Site: same-origin' \
+            --header 'X-ConfPilot-Request: 1' \
+            --data '{"email":"nobody@example.com","password":"wrong password value"}')"
+          test "$mutation_status" = "401"
+          grep --fixed-strings 'INVALID_CREDENTIALS' /tmp/confpilot-login.json
+          test "$(docker exec confpilot-ci node -p 'process.getuid()')" = "1000"
+          docker exec confpilot-ci sh -c '! command -v make && ! command -v g++ && ! command -v python3'
+        env:
+          SOURCE_URL: ${{ github.server_url }}/${{ github.repository }}
+
+      - name: Clean up the container smoke
+        if: always()
+        run: docker rm --force confpilot-ci 2>/dev/null || true

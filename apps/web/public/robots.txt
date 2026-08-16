@@ -1,0 +1,20 @@
+# ConfPilot
+# Public program pages are meant to be indexed. Authenticated workspaces are not.
+
+User-agent: *
+Disallow: /admin
+Disallow: /admin/
+Disallow: /reviewer
+Disallow: /reviewer/
+Disallow: /speaker-portal
+Disallow: /api/
+Allow: /api/program
+Allow: /api/program.ics
+Allow: /api/cfp/
+Allow: /api/public/events/
+
+# Per-event workspaces. The public program under /events/<slug>/program stays crawlable.
+Disallow: /events/*/admin
+Disallow: /events/*/reviewer
+Disallow: /events/*/speaker
+Disallow: /events/*/submit

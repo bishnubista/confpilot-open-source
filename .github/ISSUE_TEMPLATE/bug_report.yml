@@ -1,0 +1,60 @@
+name: Bug report
+description: Something behaves differently than documented.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not include credentials, account identifiers, private URLs, real attendee data, or unredacted logs. If this is a security vulnerability, stop and follow `SECURITY.md` instead.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: The actual behaviour, and what you expected instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Exact steps from a known starting state. Note which lifecycle stage the event was in.
+      placeholder: |
+        1. Sign in as organizer on a seeded local instance
+        2. Open /events/<slug>/agenda
+        3. ...
+    validations:
+      required: true
+
+  - type: dropdown
+    id: role
+    attributes:
+      label: Role in use
+      options: [Anonymous visitor, Speaker, Reviewer, Organizer, Not applicable]
+    validations:
+      required: true
+
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Where
+      options:
+        - Local development
+        - Self-hosted Cloudflare instance
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Commit or release
+      description: The commit SHA or tag you are running.
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Request ID or redacted output
+      description: Every API error carries an `x-request-id`. Include it. Redact everything else.

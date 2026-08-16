@@ -1,0 +1,45 @@
+# A single-instance ConfPilot, for a self-hoster who wants one command.
+#
+# Deliberately not a production topology: there is no TLS here, because the
+# server does not terminate it. Publishing 8787 straight to the internet serves
+# the app unencrypted. Put a reverse proxy in front, terminate TLS there, and
+# either bind the published port to loopback as below or drop `ports` entirely
+# and join the proxy's network.
+
+services:
+  confpilot:
+    build:
+      context: .
+      args:
+        # One required value is embedded into the SPA and persisted for the API.
+        SOURCE_URL: ${SOURCE_URL:?Set SOURCE_URL to the public Corresponding Source URL}
+    restart: unless-stopped
+    # Bound to loopback so `docker compose up` on a networked machine does not
+    # publish an unencrypted app. Change to "8787:8787" only behind a proxy.
+    ports:
+      - "127.0.0.1:8787:8787"
+    environment:
+      # Browser-visible origin, normally the HTTPS origin terminated by the proxy.
+      PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:?Set PUBLIC_ORIGIN to the browser-visible origin}
+      # Trust nothing by default. Set to `forwarded` only if the proxy in front
+      # overwrites `x-forwarded-for` rather than appending to it — otherwise a
+      # client picks its own rate-limit bucket by sending the header itself.
+      CLIENT_IP_SOURCE: ""
+      # Choose once, before the first calendar invite is sent.
+      # CALENDAR_UID_DOMAIN: confpilot.example.org
+    volumes:
+      # The database and private uploads. Everything else in the image is
+      # replaceable; this is not — back it up. See docs/backup-restore.md.
+      - confpilot-data:/var/lib/confpilot
+    healthcheck:
+      # /llms.txt is generated from published events, so a healthy response means
+      # the server is up *and* reading its database — which a static file could
+      # not tell you.
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8787/llms.txt').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+volumes:
+  confpilot-data:
