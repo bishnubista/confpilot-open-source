@@ -33,7 +33,7 @@
     "@confpilot/contracts": "workspace:*",
     "@hono/node-server": "^2.1.1",
     "better-sqlite3": "^13.0.3",
-    "hono": "^4.13.1"
+    "hono": "^4.13.2"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260810.1",
