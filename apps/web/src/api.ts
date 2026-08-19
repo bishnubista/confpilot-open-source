@@ -62,6 +62,7 @@ import {
   proposalResponseSchema,
   publicEmbedResponseSchema,
   publicProgramResponseSchema,
+  programOperatorBriefResponseSchema,
   programReadinessResponseSchema,
   reviewerAssignmentDetailResponseSchema,
   reviewerAssignmentQueueResponseSchema,
@@ -174,6 +175,7 @@ import {
   type ProposalResponse,
   type PublicEmbedResponse,
   type PublicProgramResponse,
+  type ProgramOperatorBriefResponse,
   type ProgramReadinessResponse,
   type ReviewerAssignmentDetailResponse,
   type ReviewerAssignmentQueueResponse,
@@ -660,6 +662,12 @@ export const programApi = {
 export const readinessApi = {
   get(eventSlug: string, signal?: AbortSignal): Promise<ProgramReadinessResponse> {
     return apiRequest(`/api/events/${encodeURIComponent(eventSlug)}/readiness`, programReadinessResponseSchema, { signal })
+  },
+}
+
+export const programOperatorApi = {
+  dailyBrief(eventSlug: string, signal?: AbortSignal): Promise<ProgramOperatorBriefResponse> {
+    return apiRequest(`/api/events/${encodeURIComponent(eventSlug)}/program-operator/daily-brief`, programOperatorBriefResponseSchema, { signal })
   },
 }
 

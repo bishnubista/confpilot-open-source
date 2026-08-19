@@ -19,6 +19,7 @@ import type { AppBindings } from "../types";
 import { createAgentRoutes } from "./agent-routes";
 import { createDiscoveryRoutes } from "./discovery-routes";
 import { createPlatformRoutes } from "./platform-routes";
+import { createProgramOperatorRoutes } from "./program-operator-routes";
 
 export interface FeatureModule {
   /** Stable identifier for the lifecycle stage this module owns. */
@@ -121,6 +122,12 @@ export const featureManifest: readonly FeatureModule[] = [
     basePath: "/api",
     summary: "Unclaimed roster intake, speaker profiles, onboarding tasks, private uploads, and content approval.",
     createRoutes: () => createSpeakerContentRoutes(createSpeakerContentHandlers()),
+  },
+  {
+    name: "program-operator",
+    basePath: "/api",
+    summary: "Organizer-scoped shadow-mode daily briefs, ranked evidence, and approval-gated reminder drafts.",
+    createRoutes: createProgramOperatorRoutes,
   },
   {
     name: "agent",

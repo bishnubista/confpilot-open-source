@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { defaultEmbedAppearance } from '@confpilot/contracts'
 
-import { agendaApi, ApiError, AUTH_SESSION_CHANGED_EVENT, cfpApi, decisionApi, embedApi, organizerSpeakerContentApi, programApi, reviewApi, speakerApi, speakerContentApi } from './api'
+import { agendaApi, ApiError, AUTH_SESSION_CHANGED_EVENT, cfpApi, decisionApi, embedApi, organizerSpeakerContentApi, programApi, programOperatorApi, reviewApi, speakerApi, speakerContentApi } from './api'
 
 afterEach(() => {
   vi.unstubAllGlobals()
@@ -337,6 +337,37 @@ describe('program and embed API clients', () => {
     const init = fetchMock.mock.calls[0][1] as RequestInit
     expect(init.method).toBe('PATCH')
     expect(new Headers(init.headers).get('x-confpilot-request')).toBe('1')
+  })
+})
+
+describe('program operator API client', () => {
+  const completeBrief = {
+    event: { id: 'event-1', slug: 'devflow-conf-2027', name: 'DevFlow Conf 2027' },
+    snapshot: { schemaVersion: 1, capturedAt: '2026-08-19T07:00:00Z', staleLeaseBefore: '2026-08-18T07:00:00Z', fingerprint: 'a'.repeat(64), evidenceCount: 1 },
+    generation: { mode: 'deterministic', modelStatus: 'not_configured', policyVersion: 'program-operator-shadow-v1' },
+    summary: { status: 'complete', acceptedSessions: 0, publishReadySessions: 0, riskCount: 0, reminderDraftCount: 0, exceptionCount: 0 },
+    evidence: [{ id: 'event:event-1', source: 'event', recordId: 'event-1', fields: ['slug', 'name'] }],
+    risks: [], plan: [], exceptions: [],
+    guardrails: { shadowMode: true, writesPerformed: 0, unauthorizedActions: 0 },
+  }
+
+  it('requests an encoded event brief as a same-origin read and validates the response', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ data: completeBrief }), { status: 200, headers: { 'content-type': 'application/json' } }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await programOperatorApi.dailyBrief('devflow conf/2027')
+
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/events/devflow%20conf%2F2027/program-operator/daily-brief')
+    const init = fetchMock.mock.calls[0][1] as RequestInit
+    expect(init.credentials).toBe('same-origin')
+    expect(init.method).toBeUndefined()
+    expect(new Headers(init.headers).has('x-confpilot-request')).toBe(false)
+  })
+
+  it('fails closed when the brief response violates the shared contract', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ data: { ...completeBrief, guardrails: { shadowMode: false, writesPerformed: 1, unauthorizedActions: 1 } } }), { status: 200 })))
+
+    await expect(programOperatorApi.dailyBrief('devflow-conf-2027')).rejects.toMatchObject({ code: 'INVALID_RESPONSE' } satisfies Partial<ApiError>)
   })
 })
 

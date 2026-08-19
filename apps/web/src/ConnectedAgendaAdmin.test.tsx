@@ -188,7 +188,7 @@ describe('ConnectedAgendaAdmin deterministic scheduling action', () => {
     expect(screen.getByText('2 placed sessions are not public: 2 await content approval.')).toBeInTheDocument()
   })
 
-  it('reports a publication replay as an unchanged result', async () => {
+  it('makes a published program with no pending work visibly current', async () => {
     currentAgenda = agenda(true)
     currentAgenda = {
       ...currentAgenda,
@@ -206,11 +206,8 @@ describe('ConnectedAgendaAdmin deterministic scheduling action', () => {
     }
     render(<ConnectedAgendaAdmin eventSlug="devflow-conf-2027" />)
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Publish program' }))
-
-    expect(await screen.findByText(
-      'No new sessions were published. 1 session is already public.',
-    )).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Program is up to date' })).toBeDisabled()
+    expect(vi.mocked(fetch).mock.calls.some(([input, init]) => String(input).includes('/agenda/publish') && init?.method === 'POST')).toBe(false)
   })
 
   it('explains when a private primary speaker keeps a session out of the public program', async () => {

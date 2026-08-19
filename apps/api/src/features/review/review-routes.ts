@@ -992,7 +992,9 @@ export function createReviewRoutes() {
         return errorResponse(context, 404, "REMINDER_TEMPLATE_NOT_FOUND", "The requested reminder template does not exist.");
       }
       if (error instanceof ReviewerReminderIneligibleError) {
-        return errorResponse(context, 409, "REMINDER_NOT_ELIGIBLE", "This reviewer has no pending review assignments to remind about.");
+        return error.reason === "UNSAFE_RECIPIENT"
+          ? errorResponse(context, 409, "REMINDER_NOT_ELIGIBLE", "Add a valid reviewer email before queueing a reminder.")
+          : errorResponse(context, 409, "REMINDER_NOT_ELIGIBLE", "This reviewer has no pending review assignments to remind about.");
       }
       if (error instanceof ReviewerReminderIdempotencyConflictError) {
         return errorResponse(context, 409, "REMINDER_IDEMPOTENCY_CONFLICT", "This idempotency key was already used with different reminder content.");
