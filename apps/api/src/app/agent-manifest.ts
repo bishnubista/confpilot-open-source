@@ -159,6 +159,10 @@ export const agentOperations: readonly AgentOperation[] = [
   operation("platform.readiness", "GET", "/api/events/:eventSlug/readiness", "platform", "organizer", "safe",
     "Derived readiness trail. The next operational blocker for the event, computed from lifecycle rows."),
 
+  // program operator
+  operation("programOperator.dailyBrief", "GET", "/api/events/:eventSlug/program-operator/daily-brief", "program-operator", "organizer", "safe",
+    "Shadow-mode daily brief with ranked canonical evidence and exact-recipient reminder drafts. This operation performs no writes; every draft requires human approval before a separate queue operation."),
+
   // cfp
   operation("cfp.publicStatus", "GET", "/api/cfp/:eventSlug", "cfp", "anonymous", "safe",
     "CFP state (upcoming, open, closed), deadlines, and submission fields."),

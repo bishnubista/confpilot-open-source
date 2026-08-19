@@ -83,7 +83,7 @@ describe("deterministic speaker reminders", () => {
     expect(first).toMatchObject({
       speakerId: "spk-d-sanaa",
       templateKey: "speaker.task-reminder",
-      templateRevision: 1,
+      templateRevision: 2,
       outboxState: "queued",
     });
     expect(sqlite.prepare(`SELECT intent, recipient_email AS recipientEmail, recipient_name AS recipientName,
@@ -94,7 +94,7 @@ describe("deterministic speaker reminders", () => {
       recipientEmail: "sanaa@devflow.example",
       recipientName: "Sanaa Idris",
       templateKey: "speaker.task-reminder",
-      templateRevision: 1,
+      templateRevision: 2,
       subject: "DevFlow Conf 2027: open speaker tasks",
       text: expect.stringContaining("- Evals You Can Trust — Confirm participation (no due time recorded)"),
       state: "queued",

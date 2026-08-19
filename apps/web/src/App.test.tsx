@@ -13,6 +13,10 @@ function renderAt(path: string) {
   return render(<App />)
 }
 
+async function openTaskTab(name: string) {
+  fireEvent.click(await screen.findByRole('button', { name }))
+}
+
 function requestPath(request: RequestInfo | URL) {
   const requestUrl = typeof request === 'string' ? request : request instanceof URL ? request.toString() : request.url
   return new URL(requestUrl, 'http://localhost').pathname
@@ -135,6 +139,33 @@ const programReadiness = {
     { id: 'session_unscheduled:session-docs', kind: 'session_unscheduled', entityType: 'session', entityId: 'session-docs', entityLabel: 'Docs That Answer Back', rule: 'Accepted sessions need an agenda placement', explanation: 'This accepted session has no agenda placement.', actionLabel: 'Place session', actionPath: '/admin/agenda?session=session-docs' },
     { id: 'publication_pending:session-ci', kind: 'publication_pending', entityType: 'session', entityId: 'session-ci', entityLabel: 'Taming 40-Minute CI', rule: 'Publish-ready sessions require an organizer publication action', explanation: 'Every prerequisite is satisfied, but this session is not visible yet.', actionLabel: 'Review and publish agenda', actionPath: '/admin/agenda?session=session-ci' },
   ],
+} as const
+const programOperatorBrief = {
+  event: { id: 'event-devflow', slug: 'devflow-conf-2027', name: 'DevFlow Conf 2027' },
+  snapshot: { schemaVersion: 1, capturedAt: '2026-08-19T07:00:00Z', staleLeaseBefore: '2026-08-18T07:00:00Z', fingerprint: 'a'.repeat(64), evidenceCount: 4 },
+  generation: { mode: 'deterministic', modelStatus: 'not_configured', policyVersion: 'program-operator-shadow-v1' },
+  summary: { status: 'attention_needed', acceptedSessions: 8, publishReadySessions: 5, riskCount: 2, reminderDraftCount: 1, exceptionCount: 1 },
+  evidence: [
+    { id: 'event:event-devflow', source: 'event', recordId: 'event-devflow', fields: ['slug', 'name'] },
+    { id: 'speaker:speaker-owned', source: 'speaker', recordId: 'speaker-owned', fields: ['name', 'email'] },
+    { id: 'speaker_task:task-headshot', source: 'speaker_task', recordId: 'task-headshot', fields: ['status', 'dueAt'] },
+    { id: 'reviewer_summary:reviewer-1', source: 'reviewer_summary', recordId: 'reviewer-1', fields: ['outstandingCount'] },
+  ],
+  risks: [
+    { id: 'risk-speaker-task', rank: 1, severity: 'critical', kind: 'overdue_speaker_task', title: 'Headshot overdue for Sam Whitfield', explanation: 'The required headshot task is overdue and incomplete.', suggestedResolution: 'Open task ledger at /admin/speakers?speaker=speaker-owned.', affectedRecords: [{ type: 'speaker', id: 'speaker-owned', label: 'Sam Whitfield' }, { type: 'speaker_task', id: 'task-headshot', label: 'Upload headshot' }], evidenceIds: ['speaker:speaker-owned', 'speaker_task:task-headshot'], confidence: 'high' },
+    { id: 'risk-review-backlog', rank: 2, severity: 'high', kind: 'review_backlog', title: 'Reviewer queue is falling behind', explanation: 'One reviewer has 26 outstanding assignments.', suggestedResolution: 'Review the queue and send a targeted reminder.', affectedRecords: [{ type: 'review_assignment', id: 'reviewer-1', label: 'Alex Chen · 26 outstanding' }], evidenceIds: ['reviewer_summary:reviewer-1'], confidence: 'high' },
+  ],
+  plan: [{ id: 'plan-speaker-reminder', kind: 'speaker_reminder', status: 'draft', requiredApproval: 'human', queueOperation: 'speakers.queueReminders', recipient: { type: 'speaker', id: 'speaker-owned', name: 'Sam Whitfield', email: 'sam@example.test' }, draft: { templateKey: 'speaker.readiness-reminder', templateRevision: 2, subject: 'Action needed for DevFlow Conf 2027', text: 'Hi Sam,\n\nYour headshot is overdue. Please upload it through your speaker portal.' }, expectedStateChange: 'The reminder may prompt completion of the headshot task; ConfPilot will verify the task separately.', evidenceIds: ['speaker:speaker-owned', 'speaker_task:task-headshot'] }],
+  exceptions: [{ id: 'exception-review-judgment', kind: 'manual_judgment', title: 'Reviewer reassignment needs organizer judgment', explanation: 'ConfPilot cannot safely choose which assignments to move.', evidenceIds: ['reviewer_summary:reviewer-1'] }],
+  guardrails: { shadowMode: true, writesPerformed: 0, unauthorizedActions: 0 },
+} as const
+const emptyProgramOperatorBrief = {
+  ...programOperatorBrief,
+  event: { id: 'event-community', slug: 'community-conf-2028', name: 'Community Conf 2028' },
+  snapshot: { ...programOperatorBrief.snapshot, fingerprint: 'b'.repeat(64), evidenceCount: 1 },
+  summary: { status: 'complete', acceptedSessions: 0, publishReadySessions: 0, riskCount: 0, reminderDraftCount: 0, exceptionCount: 0 },
+  evidence: [{ id: 'event:event-community', source: 'event', recordId: 'event-community', fields: ['slug', 'name'] }],
+  risks: [], plan: [], exceptions: [],
 } as const
 const publicProgram = {
   event: { slug: 'devflow-conf-2027', name: 'DevFlow Conf 2027', tagline: 'The conference for people who build software', location: 'Moscone West · San Francisco, CA', description: 'Three days of practical ideas for software teams.', startsOn: '2027-05-12', endsOn: '2027-05-14', timeZone: 'America/Los_Angeles', status: 'published' },
@@ -263,6 +294,8 @@ function installApiMock() {
     }
     if (path === '/api/events/devflow-conf-2027/agenda' && (!init?.method || init.method === 'GET')) return response({ data: syncedApiAgenda(), requestId: 'test-request' })
     if (path === '/api/events/devflow-conf-2027/readiness' && (!init?.method || init.method === 'GET')) return response({ data: programReadiness, requestId: 'readiness' })
+    if (path === '/api/events/devflow-conf-2027/program-operator/daily-brief' && (!init?.method || init.method === 'GET')) return response({ data: programOperatorBrief, requestId: 'program-operator' })
+    if (path === '/api/events/community-conf-2028/program-operator/daily-brief' && (!init?.method || init.method === 'GET')) return response({ data: emptyProgramOperatorBrief, requestId: 'program-operator-empty' })
     if (path === '/api/events/community-conf-2028/readiness' && (!init?.method || init.method === 'GET')) return response({ data: {
       event: { slug: 'community-conf-2028', name: 'Community Conf 2028' },
       summary: { accepted: 0, publishReady: 0, blocked: 0, percent: 0 },
@@ -541,9 +574,9 @@ describe('ConfPilot Phase 0 shell', () => {
     await screen.findByRole('heading', { name: 'Program operations overview' })
     const sidebar = document.querySelector('.sidebar')
 
-    fireEvent.click(within(screen.getByRole('navigation', { name: 'Workspace navigation' })).getByRole('link', { name: 'Agenda' }))
+    fireEvent.click(within(screen.getByRole('navigation', { name: 'Workspace navigation' })).getByRole('link', { name: 'Schedule' }))
 
-    expect(await screen.findByRole('heading', { name: 'Agenda board' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Schedule' })).toBeInTheDocument()
     expect(document.querySelector('.sidebar')).toBe(sidebar)
     expect(screen.getByText('Organizer workspace')).toBeInTheDocument()
   })
@@ -555,7 +588,7 @@ describe('ConfPilot Phase 0 shell', () => {
     expect(screen.getByRole('heading', { name: '5 of 8 accepted sessions are publish-ready' })).toBeInTheDocument()
     expect(screen.getByText('63%')).toBeInTheDocument()
     expect(screen.getByText('3 sessions blocked')).toBeInTheDocument()
-    expect(screen.getByText('Role workspaces')).toBeInTheDocument()
+    expect(screen.getByText('Preview workspaces')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /Sam Whitfield.*Primary presenters/ })).toHaveAttribute('href', '/admin/speakers?speaker=speaker-owned')
     expect(screen.getByRole('link', { name: /An owner-scoped accepted session.*Session content/ })).toHaveAttribute('href', '/admin/content?session=session-owned')
     expect(screen.getByRole('link', { name: /Docs That Answer Back.*Accepted sessions/ })).toHaveAttribute('href', '/admin/agenda?session=session-docs')
@@ -570,12 +603,49 @@ describe('ConfPilot Phase 0 shell', () => {
     expect(screen.queryByText(/Illustrative demo/)).not.toBeInTheDocument()
   })
 
+  it('shows the shadow-mode program brief and exact-recipient draft without offering a send action', async () => {
+    renderAt('/admin')
+
+    expect(await screen.findByRole('heading', { name: 'Today’s program brief' })).toBeInTheDocument()
+    expect(screen.getByLabelText('Daily brief summary')).toHaveTextContent('2 ranked risks')
+    expect(screen.getByRole('heading', { name: 'Headshot overdue for Sam Whitfield' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Open record' })).toHaveAttribute('href', '/admin/speakers?speaker=speaker-owned')
+    expect(screen.getByRole('note')).toHaveTextContent('Nothing has been queued or sent.')
+    expect(screen.getByRole('heading', { name: 'Reviewer reassignment needs organizer judgment' })).toBeInTheDocument()
+
+    fireEvent.click(screen.getByText('Review draft'))
+    expect(screen.getByText('sam@example.test')).toBeInTheDocument()
+    expect(screen.getByText('Human approval required')).toBeInTheDocument()
+    expect(screen.getByText(/Your headshot is overdue/)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /approve|queue|send/i })).not.toBeInTheDocument()
+
+    const beforeRefresh = vi.mocked(fetch).mock.calls.filter(([request]) => requestPath(request) === '/api/events/devflow-conf-2027/program-operator/daily-brief').length
+    fireEvent.click(screen.getByRole('button', { name: 'Refresh brief' }))
+    await waitFor(() => expect(vi.mocked(fetch).mock.calls.filter(([request]) => requestPath(request) === '/api/events/devflow-conf-2027/program-operator/daily-brief')).toHaveLength(beforeRefresh + 1))
+    expect(vi.mocked(fetch).mock.calls.filter(([request]) => requestPath(request) === '/api/events/devflow-conf-2027/program-operator/daily-brief').every(([, init]) => !init?.method || init.method === 'GET')).toBe(true)
+  })
+
+  it('keeps canonical readiness available when the optional daily brief fails', async () => {
+    const defaultFetch = fetch as ReturnType<typeof vi.fn>
+    const fallback = defaultFetch.getMockImplementation() as (request: RequestInfo | URL, init?: RequestInit) => Promise<Response>
+    defaultFetch.mockImplementation(async (request: RequestInfo | URL, init?: RequestInit) => requestPath(request) === '/api/events/devflow-conf-2027/program-operator/daily-brief'
+      ? response({ error: { code: 'PROGRAM_OPERATOR_UNAVAILABLE', message: 'Daily brief could not be prepared.' } }, 503)
+      : fallback(request, init))
+
+    renderAt('/admin')
+
+    expect(await screen.findByRole('heading', { name: 'Daily brief unavailable' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '5 of 8 accepted sessions are publish-ready' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument()
+  })
+
   it('keeps readiness actions inside an explicitly scoped event workspace', async () => {
     renderAt('/events/devflow-conf-2027/admin')
 
     await screen.findByRole('heading', { name: 'Program operations overview' })
     expect(screen.getByRole('link', { name: /Docs That Answer Back.*Accepted sessions/ }))
       .toHaveAttribute('href', '/events/devflow-conf-2027/admin/agenda?session=session-docs')
+    expect(await screen.findByRole('link', { name: 'Open record' })).toHaveAttribute('href', '/events/devflow-conf-2027/admin/speakers?speaker=speaker-owned')
     const proof = screen.getByRole('heading', { name: 'Verify the attendee outputs' }).closest('section')!
     expect(within(proof).getByRole('link', { name: 'Public program ↗' }))
       .toHaveAttribute('href', '/events/devflow-conf-2027/program')
@@ -660,10 +730,10 @@ describe('ConfPilot Phase 0 shell', () => {
   it.each([
     ['/admin', 'Program operations overview'],
     ['/admin/cfp', 'Submission form'],
-    ['/admin/abstracts', 'Review operations'],
+    ['/admin/abstracts', 'Proposals & reviews'],
     ['/admin/speakers', 'Speaker readiness'],
-    ['/admin/content', 'Deliverables and approvals'],
-    ['/admin/agenda', 'Agenda board'],
+    ['/admin/content', 'Content & files'],
+    ['/admin/agenda', 'Schedule'],
     ['/admin/embeds', 'Put the program where attendees are'],
     ['/admin/design-system', 'ConfPilot interface foundations'],
     ['/program', 'Program'],
@@ -684,6 +754,7 @@ describe('ConfPilot Phase 0 shell', () => {
 
   it('shows every immutable deliverable version in the organizer content library', async () => {
     renderAt('/admin/content')
+    await openTaskTab('Current files')
 
     const library = (await screen.findByRole('heading', { name: 'Content library' })).closest('section')!
     expect(within(library).getByRole('region', { name: 'All deliverable versions' })).toBeInTheDocument()
@@ -704,12 +775,13 @@ describe('ConfPilot Phase 0 shell', () => {
 
   it('keeps reviewer input separate from decisions and notifications', async () => {
     renderAt('/admin/abstracts')
-    expect(await screen.findByText('Reviewer input does not notify authors.')).toBeInTheDocument()
-    expect(screen.getByText(/Recording a program decision and saving its notification snapshot remain separate/)).toBeInTheDocument()
+    expect(await screen.findByText('Reviewer input does not email authors.')).toBeInTheDocument()
+    expect(screen.getByText(/Recording a decision and preparing its email are separate/)).toBeInTheDocument()
   })
 
   it('lets an organizer activate a versioned evaluation plan for future assignments', async () => {
     renderAt('/admin/abstracts')
+    await openTaskTab('Review setup')
 
     expect(await screen.findByRole('heading', { name: 'Evaluation plan' })).toBeInTheDocument()
     expect(screen.getByText(/No evaluation plan is active/)).toBeInTheDocument()
@@ -729,6 +801,7 @@ describe('ConfPilot Phase 0 shell', () => {
 
   it('preserves partial decimal weights and generates reusable unique criterion keys', async () => {
     renderAt('/admin/abstracts')
+    await openTaskTab('Review setup')
     expect(await screen.findByRole('heading', { name: 'Evaluation plan' })).toBeInTheDocument()
 
     const firstWeight = screen.getAllByLabelText('Weight (%)')[0]
@@ -807,6 +880,7 @@ describe('ConfPilot Phase 0 shell', () => {
       return fallback(request, init)
     })
     renderAt('/admin/speakers')
+    await openTaskTab('Profile & tasks')
 
     expect(await screen.findByRole('heading', { name: 'Invite this speaker' })).toBeInTheDocument()
     expect(screen.getByText(/links an account to this exact profile/)).toBeInTheDocument()
@@ -867,10 +941,10 @@ describe('ConfPilot Phase 0 shell', () => {
     const titles = () => within(queue).getAllByRole('link')
       .filter((link) => link.classList.contains('review-progress-row'))
       .map((link) => link.textContent)
-    const sort = within(queue).getByLabelText('Sort by aggregate score')
+    const sort = within(queue).getByLabelText('Sort by average score')
     const exportButton = within(queue).getByRole('button', { name: 'Export review results (CSV)' })
-    expect(within(queue).getByText(/Aggregates normalize submitted scorecards to a comparable 1–5 scale/)).toBeInTheDocument()
-    expect(titles()).toEqual(expect.arrayContaining([expect.stringContaining('3.0 comparable aggregate')]))
+    expect(within(queue).getByText(/Scores are normalized to a 1–5 scale so results from different scorecards can be compared/)).toBeInTheDocument()
+    expect(titles()).toEqual(expect.arrayContaining([expect.stringContaining('3.0 average score')]))
     fireEvent.click(exportButton)
     expect(await within(queue).findByRole('status')).toHaveTextContent('Downloaded devflow-conf-2027-review-results.csv.')
     expect(defaultFetch.mock.calls.some(([request]) => requestPath(request) === '/api/events/devflow-conf-2027/cfp/reviews/export.csv')).toBe(true)
@@ -1005,7 +1079,7 @@ describe('ConfPilot Phase 0 shell', () => {
     renderAt('/admin/agenda')
 
     expect(await screen.findByText('1 placed session is not public: 1 awaits publication.')).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Publish program' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Publish 1 update' }))
     expect(await screen.findByText((text) => text.includes('newly public'))).toBeInTheDocument()
     await waitFor(() => expect(screen.queryByText(/placed session is not public/)).not.toBeInTheDocument())
   })
@@ -1075,7 +1149,7 @@ describe('ConfPilot Phase 0 shell', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Auto-place 2 in earliest slots' }))
     expect(await screen.findByText('2 sessions scheduled into the earliest available slots. Room and speaker conflicts were prevented.')).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Publish program' }))
+    fireEvent.click(screen.getByRole('button', { name: /Publish \d+ updates?|Retry publication/ }))
     expect(await screen.findByText((text) => text.includes('No new sessions were published') || text.includes('newly public'))).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /Download calendar/ })).toHaveAttribute('href', '/api/program.ics?event=devflow-conf-2027')
     expect(window.localStorage.getItem(DEMO_STORAGE_KEY)).toBeNull()
@@ -1458,7 +1532,7 @@ describe('ConfPilot Phase 0 shell', () => {
 
   it('keeps the organizer shell available for a malformed abstract route', async () => {
     renderAt('/admin/abstracts/%')
-    expect(await screen.findByRole('heading', { name: 'Review operations' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Proposals & reviews' })).toBeInTheDocument()
   })
 
   it('shows workshop prerequisites only for the configured workshop value', async () => {
@@ -2297,7 +2371,7 @@ describe('ConfPilot Phase 0 shell', () => {
     })
     renderAt('/admin/abstracts')
 
-    await screen.findByRole('heading', { name: 'Review operations' })
+    await screen.findByRole('heading', { name: 'Proposals & reviews' })
     const rationale = await screen.findByLabelText('Organizer rationale')
     if (decisionValue !== 'accept') fireEvent.click(screen.getByRole('radio', { name: new RegExp(decisionValue, 'i') }))
     fireEvent.change(rationale, { target: { value: `${decisionValue} based on the completed review.` } })
@@ -2322,7 +2396,7 @@ describe('ConfPilot Phase 0 shell', () => {
       return fallback(request, init)
     })
     renderAt('/admin/abstracts')
-    await screen.findByRole('heading', { name: 'Review operations' })
+    await screen.findByRole('heading', { name: 'Proposals & reviews' })
     fireEvent.change(await screen.findByLabelText('Organizer rationale'), { target: { value: 'One final decision.' } })
     fireEvent.click(screen.getByRole('button', { name: 'Review final decision' }))
     const confirm = screen.getByRole('button', { name: 'Confirm accept' })
@@ -2422,7 +2496,7 @@ describe('ConfPilot Phase 0 shell', () => {
       return fallback(request, init)
     })
     renderAt('/admin/abstracts')
-    await screen.findByRole('heading', { name: 'Review operations' })
+    await screen.findByRole('heading', { name: 'Proposals & reviews' })
     fireEvent.change(await screen.findByLabelText('Organizer rationale'), { target: { value: 'Accept based on the completed review.' } })
     fireEvent.click(screen.getByRole('button', { name: 'Review final decision' }))
     fireEvent.click(screen.getByRole('button', { name: 'Confirm accept' }))
@@ -2499,9 +2573,10 @@ describe('ConfPilot Phase 0 shell', () => {
     })
 
     renderAt('/admin/abstracts')
+    await openTaskTab('Decisions')
 
-    expect((await screen.findAllByText(panelLabel)).length).toBeGreaterThan(0)
-    expect(screen.getAllByText(ledgerLabel).length).toBeGreaterThan(0)
+    expect((await screen.findAllByText(ledgerLabel)).length).toBeGreaterThan(0)
+    if (panelLabel !== ledgerLabel) expect(screen.queryByText(panelLabel)).not.toBeInTheDocument()
     expect(screen.queryByText(/Decision email (?:queued|sent|delivery failed)/i)).not.toBeInTheDocument()
   })
 
@@ -3040,8 +3115,9 @@ describe('ConfPilot Phase 0 shell', () => {
     fireEvent.change(search, { target: { value: 'missing speaker' } })
     expect(screen.getByRole('heading', { name: 'No speakers match' })).toBeInTheDocument()
     fireEvent.change(search, { target: { value: 'Sam' } })
-    expect(screen.getByRole('columnheader', { name: 'Release task' })).toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: 'Session readiness' })).toBeInTheDocument()
     expect(screen.getByText('1 session')).toBeInTheDocument()
+    await openTaskTab('Profile & tasks')
     fireEvent.click(screen.getByRole('button', { name: 'Remove profile from published program' }))
 
     await waitFor(() => expect(defaultFetch.mock.calls.filter(([path]) => String(path).endsWith('/speakers')).length).toBeGreaterThan(1))
@@ -3066,6 +3142,7 @@ describe('ConfPilot Phase 0 shell', () => {
     })
 
     renderAt('/admin/speakers')
+    await openTaskTab('Profile & tasks')
 
     expect(await screen.findByRole('heading', { name: 'Marcus Roster Only' })).toBeInTheDocument()
     expect(screen.getByText(/Tasks become available after this speaker is linked to an accepted session/)).toBeInTheDocument()
@@ -3083,6 +3160,7 @@ describe('ConfPilot Phase 0 shell', () => {
     })
 
     renderAt('/admin/speakers')
+    await openTaskTab('Profile & tasks')
 
     fireEvent.change(await screen.findByLabelText('Task label'), { target: { value: 'Confirm travel plan' } })
     fireEvent.change(screen.getByLabelText('Due at'), { target: { value: '2027-04-20T12:30' } })
@@ -3105,6 +3183,7 @@ describe('ConfPilot Phase 0 shell', () => {
     })
 
     renderAt('/admin/speakers')
+    await openTaskTab('Profile & tasks')
     const submitTask = async (label: string) => {
       fireEvent.change(await screen.findByLabelText('Task label'), { target: { value: label } })
       fireEvent.change(screen.getByLabelText('Due at'), { target: { value: '2027-04-20T12:30' } })
@@ -3128,6 +3207,7 @@ describe('ConfPilot Phase 0 shell', () => {
   it('queues a revisioned speaker reminder without claiming delivery', async () => {
     const defaultFetch = fetch as ReturnType<typeof vi.fn>
     renderAt('/admin/speakers')
+    await openTaskTab('Profile & tasks')
 
     expect(await screen.findByRole('heading', { name: 'Queue a deterministic reminder' })).toBeInTheDocument()
     const template = screen.getByLabelText(/^Reminder template/)
@@ -3164,6 +3244,7 @@ describe('ConfPilot Phase 0 shell', () => {
       return fallback(request, init)
     })
     renderAt('/admin/speakers')
+    await openTaskTab('Profile & tasks')
 
     expect(await screen.findByRole('heading', { name: 'Task deadlines' })).toBeInTheDocument()
     fireEvent.change(screen.getByLabelText('Confirm participation'), { target: { value: '2027-04-01T10:00' } })
@@ -3177,15 +3258,16 @@ describe('ConfPilot Phase 0 shell', () => {
   it('queues only the selected speaker audience and shows truthful provider status', async () => {
     const defaultFetch = fetch as ReturnType<typeof vi.fn>
     renderAt('/admin/speakers')
+    await openTaskTab('Messages')
 
-    expect(await screen.findByRole('heading', { name: 'Exact-audience message queue' })).toBeInTheDocument()
-    expect(screen.getByText('Provider dispatch disabled')).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Message selected speakers' })).toBeInTheDocument()
+    expect(screen.getByText('Automatic email sending is off')).toBeInTheDocument()
     fireEvent.click(screen.getByLabelText('Select Sam Whitfield (sam@example.test) for communication'))
     fireEvent.change(screen.getByLabelText(/^Subject$/), { target: { value: 'Program update' } })
     fireEvent.change(screen.getByLabelText(/^Message$/), { target: { value: 'Please review the program details.' } })
     fireEvent.click(screen.getByRole('button', { name: 'Queue 1 message' }))
 
-    expect(await screen.findByText('1 immutable message queued. Queueing is not proof of sending or delivery.')).toBeInTheDocument()
+    expect(await screen.findByText('1 message queued. Queued does not mean sent or delivered.')).toBeInTheDocument()
     expect(await screen.findByText('Queued · not yet attempted')).toBeInTheDocument()
     const call = defaultFetch.mock.calls.find(([path, init]) => String(path).endsWith('/communications/speakers/bulk') && init?.method === 'POST')
     expect(JSON.parse(String(call?.[1]?.body))).toMatchObject({
@@ -3197,8 +3279,9 @@ describe('ConfPilot Phase 0 shell', () => {
 
   it('previews documented merge fields for each selected speaker before queueing', async () => {
     renderAt('/admin/speakers')
+    await openTaskTab('Messages')
 
-    await screen.findByRole('heading', { name: 'Exact-audience message queue' })
+    await screen.findByRole('heading', { name: 'Message selected speakers' })
     fireEvent.click(screen.getByLabelText('Select Sam Whitfield (sam@example.test) for communication'))
     fireEvent.change(screen.getByLabelText(/^Subject$/), { target: { value: '{first_name}: {session_title}' } })
     fireEvent.change(screen.getByLabelText(/^Message$/), { target: { value: 'Open {portal_link}' } })
@@ -3230,8 +3313,9 @@ describe('ConfPilot Phase 0 shell', () => {
     })
 
     renderAt('/admin/speakers')
-    expect(await screen.findByRole('button', { name: 'Open Sam Whitfield (sam@example.test)' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Open Sam Whitfield (sam.two@example.test)' })).toBeInTheDocument()
+    await openTaskTab('Messages')
+    expect(await screen.findByLabelText('Select Sam Whitfield (sam@example.test) for communication')).toBeInTheDocument()
+    expect(screen.getByLabelText('Select Sam Whitfield (sam.two@example.test) for communication')).toBeInTheDocument()
     fireEvent.click(screen.getByLabelText('Select Sam Whitfield (sam@example.test) for communication'))
     fireEvent.click(screen.getByLabelText('Select Sam Whitfield (sam.two@example.test) for communication'))
     expect(screen.getByText(/Sam Whitfield \(sam@example\.test\), Sam Whitfield \(sam\.two@example\.test\)/)).toBeInTheDocument()
@@ -3287,15 +3371,18 @@ describe('ConfPilot Phase 0 shell', () => {
     const samRow = await screen.findByRole('row', { name: /Sam Whitfield/ })
     expect(within(samRow).getByText('1 complete · 0 open')).toBeInTheDocument()
     expect(within(samRow).getByText('Confirm participation: complete')).toBeInTheDocument()
+    fireEvent.click(within(samRow).getByRole('button', { name: /Open Sam Whitfield/ }))
     const portrait = screen.getByRole('img', { name: 'Sam Whitfield headshot' })
     expect(portrait).toHaveAttribute('src', headshot.viewPath)
     expect(screen.getByText(headshot.originalFilename)).toBeInTheDocument()
     expect(screen.getByText(headshot.originalFilename).closest('div')?.querySelector('time'))
       .toHaveAttribute('dateTime', headshot.uploadedAt)
 
+    await openTaskTab('Readiness')
     fireEvent.change(screen.getByLabelText('Workflow status'), { target: { value: 'invited' } })
     expect(screen.queryByRole('row', { name: /Sam Whitfield/ })).not.toBeInTheDocument()
     expect(screen.getByRole('row', { name: /Avery Stone/ })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /Open Avery Stone/ }))
     expect(screen.getByRole('heading', { name: 'Avery Stone' })).toBeInTheDocument()
   })
 
@@ -3322,11 +3409,14 @@ describe('ConfPilot Phase 0 shell', () => {
     const visibleSpeakerIds = () => Array.from(document.querySelectorAll<HTMLTableRowElement>('tbody tr[data-speaker-id]')).map((row) => row.dataset.speakerId)
     renderAt('/admin/speakers')
 
-    const filter = await screen.findByLabelText('Speaker readiness')
+    await screen.findByLabelText('Speaker readiness')
     expect(visibleSpeakerIds()).toEqual(['speaker-owned', 'speaker-ready', 'speaker-outstanding'])
     expect(screen.getByRole('status', { name: 'Active readiness filter' })).toHaveTextContent('All speakers · 3 of 3')
+    await openTaskTab('Messages')
     fireEvent.click(screen.getByLabelText('Select Sam Whitfield (sam@example.test) for communication'))
 
+    await openTaskTab('Readiness')
+    const filter = screen.getByLabelText('Speaker readiness')
     fireEvent.change(filter, { target: { value: 'attention' } })
     expect(filter).toHaveValue('attention')
     expect(visibleSpeakerIds()).toEqual(['speaker-owned', 'speaker-outstanding'])
@@ -3334,11 +3424,14 @@ describe('ConfPilot Phase 0 shell', () => {
     fireEvent.click(screen.getByRole('button', { name: /Outstanding Speaker/ }))
     expect(screen.getByRole('heading', { name: 'Outstanding Speaker' })).toBeInTheDocument()
 
-    fireEvent.change(filter, { target: { value: 'ready' } })
+    await openTaskTab('Readiness')
+    const readinessFilter = screen.getByLabelText('Speaker readiness')
+    fireEvent.change(readinessFilter, { target: { value: 'ready' } })
     expect(visibleSpeakerIds()).toEqual(['speaker-ready'])
     expect(screen.getByRole('status', { name: 'Active readiness filter' })).toHaveTextContent('Ready · 1 of 3')
-    expect(screen.getByRole('heading', { name: 'Ready Speaker' })).toBeInTheDocument()
-    expect(screen.queryByRole('heading', { name: 'Outstanding Speaker' })).not.toBeInTheDocument()
+    expect(screen.getByRole('row', { name: /Ready Speaker/ })).toBeInTheDocument()
+    expect(screen.queryByRole('row', { name: /Outstanding Speaker/ })).not.toBeInTheDocument()
+    await openTaskTab('Messages')
     fireEvent.click(screen.getByLabelText('Select Ready Speaker (ready@example.test) for communication'))
     expect(screen.getByText('2 selected')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Clear visible selection' }))
@@ -3371,6 +3464,7 @@ describe('ConfPilot Phase 0 shell', () => {
       return fallback(request, init)
     })
     renderAt('/admin/speakers')
+    await openTaskTab('Add / import')
 
     const intake = (await screen.findByRole('heading', { name: 'Add speakers' })).closest('section')!
     expect(within(intake).getByText(/Manual and CSV intake create unclaimed event profiles/)).toBeInTheDocument()
@@ -3395,6 +3489,7 @@ describe('ConfPilot Phase 0 shell', () => {
 
   it('shows headshot upload history as audit-only instead of offering an invalid restore', async () => {
     renderAt('/admin/speakers')
+    await openTaskTab('Profile & tasks')
 
     expect(await screen.findByText('Audit only')).toBeInTheDocument()
     expect(screen.getByText('headshot uploaded')).toBeInTheDocument()
@@ -3404,6 +3499,7 @@ describe('ConfPilot Phase 0 shell', () => {
   it('lets an organizer edit the canonical speaker profile with optimistic revision safety', async () => {
     const defaultFetch = fetch as ReturnType<typeof vi.fn>
     renderAt('/admin/speakers')
+    await openTaskTab('Profile & tasks')
 
     const profileForm = (await screen.findByRole('button', { name: 'Save speaker profile' })).closest('form')!
     const name = within(profileForm).getByLabelText('Name')
@@ -3445,6 +3541,7 @@ describe('ConfPilot Phase 0 shell', () => {
       return fallback(request, init)
     })
     renderAt('/admin/speakers')
+    await openTaskTab('Profile & tasks')
 
     const profileForm = (await screen.findByRole('button', { name: 'Save speaker profile' })).closest('form')!
     const bio = within(profileForm).getByLabelText('Biography')
@@ -3487,6 +3584,7 @@ describe('ConfPilot Phase 0 shell', () => {
       return fallback(request, init)
     })
     renderAt('/admin/speakers')
+    await openTaskTab('Profile & tasks')
 
     const profileForm = (await screen.findByRole('button', { name: 'Save speaker profile' })).closest('form')!
     fireEvent.change(within(profileForm).getByLabelText('Biography'), { target: { value: 'Organizer draft that must not overwrite the speaker.' } })
@@ -3524,6 +3622,7 @@ describe('ConfPilot Phase 0 shell', () => {
       return fallback(request, init)
     })
     renderAt('/admin/speakers')
+    await openTaskTab('Profile & tasks')
 
     const profileForm = (await screen.findByRole('button', { name: 'Save speaker profile' })).closest('form')!
     fireEvent.change(within(profileForm).getByLabelText('Biography'), { target: { value: 'Organizer draft survives the failed refresh.' } })
@@ -3560,6 +3659,7 @@ describe('ConfPilot Phase 0 shell', () => {
       return fallback(request, init)
     })
     renderAt('/admin/speakers')
+    await openTaskTab('Profile & tasks')
 
     const profileForm = (await screen.findByRole('button', { name: 'Save speaker profile' })).closest('form')!
     const bio = within(profileForm).getByLabelText('Biography')
@@ -3587,6 +3687,7 @@ describe('ConfPilot Phase 0 shell', () => {
       return fallback(request, init)
     })
     renderAt('/admin/speakers')
+    await openTaskTab('Profile & tasks')
 
     const profileForm = (await screen.findByRole('button', { name: 'Save speaker profile' })).closest('form')!
     const bio = within(profileForm).getByLabelText('Biography')
@@ -3665,14 +3766,16 @@ describe('ConfPilot Phase 0 shell', () => {
       return fallback(request, init)
     })
     renderAt('/admin/content')
+    await openTaskTab('History')
 
-    expect(await screen.findByText(/Each entry is the complete snapshot saved immediately before the recorded change/)).toBeInTheDocument()
+    expect(await screen.findByText(/Each entry shows the content saved before that change/)).toBeInTheDocument()
     const targetSnapshot = screen.getByText('A concrete accepted-session abstract. This session now includes a live demo.').closest('article')
     expect(targetSnapshot).not.toBeNull()
-    expect(within(targetSnapshot!).getByText('Snapshot before edit')).toBeInTheDocument()
-    fireEvent.click(within(targetSnapshot!).getByRole('button', { name: 'Restore this snapshot' }))
+    expect(within(targetSnapshot!).getByText('Before an edit')).toBeInTheDocument()
+    fireEvent.click(within(targetSnapshot!).getByRole('button', { name: 'Restore this version' }))
 
     await waitFor(() => expect(defaultFetch.mock.calls.some(([path, init]) => String(path).endsWith('/history/history-before-second/restore') && init?.method === 'POST')).toBe(true))
+    await openTaskTab('Needs approval')
     await waitFor(() => expect(screen.getByLabelText('Abstract')).toHaveValue('A concrete accepted-session abstract. This session now includes a live demo.'))
     expect(screen.getByLabelText('Title')).toHaveValue('UPDATED: An owner-scoped accepted session')
     expect((screen.getByLabelText('Abstract') as HTMLTextAreaElement).value).not.toContain('Attendees should bring a laptop.')
@@ -3680,6 +3783,7 @@ describe('ConfPilot Phase 0 shell', () => {
 
   it('keeps session deliverables presentation-only and routes headshots through speaker profiles', async () => {
     renderAt('/admin/content')
+    await openTaskTab('Current files')
 
     const form = (await screen.findByText('New presentation deliverable')).closest('form')
     expect(form).not.toBeNull()
@@ -3690,6 +3794,7 @@ describe('ConfPilot Phase 0 shell', () => {
   it('submits the visible local due date as a contract timestamp', async () => {
     const defaultFetch = fetch as ReturnType<typeof vi.fn>
     renderAt('/admin/content')
+    await openTaskTab('Current files')
 
     fireEvent.change(await screen.findByLabelText('Label'), { target: { value: 'Conference slides' } })
     fireEvent.change(screen.getByLabelText('Due at'), { target: { value: '2027-05-01T12:00' } })
@@ -3737,7 +3842,7 @@ describe('ConfPilot Phase 0 shell', () => {
     state.proposals = [{ ...initialWorkflow.proposals[2], id: 'ABS-160', title: 'Hostile proposal', participants: [42] }]
     window.localStorage.setItem(DEMO_STORAGE_KEY, JSON.stringify(state))
     renderAt('/admin/abstracts')
-    await screen.findByRole('heading', { name: 'Review operations' })
+    await screen.findByRole('heading', { name: 'Proposals & reviews' })
     expect(screen.queryByText('Hostile proposal')).not.toBeInTheDocument()
     expect(screen.getAllByText('Taming 40-Minute CI: Incremental Builds at Monorepo Scale').length).toBeGreaterThan(0)
   })

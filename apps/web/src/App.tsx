@@ -35,15 +35,13 @@ import { asApiError, eventWorkspacePath, DEFAULT_EVENT_SLUG, isEventSlug } from 
 import { eventSlugForRole } from './auth'
 
 const adminNav = [
-  ['Overview', ''],
-  ['Call for Proposals', 'cfp'],
-  ['Abstracts', 'abstracts'],
-  ['Reviewers', 'reviewers'],
-  ['Speakers', 'speakers'],
-  ['Content', 'content'],
-  ['Agenda', 'agenda'],
-  ['Embeds', 'embeds'],
-  ['Design system', 'design-system'],
+  { label: 'Overview', section: '', related: [] },
+  { label: 'Call for proposals', section: 'cfp', related: [] },
+  { label: 'Proposals & reviews', section: 'abstracts', related: ['reviewers'] },
+  { label: 'Speakers', section: 'speakers', related: [] },
+  { label: 'Content & files', section: 'content', related: [] },
+  { label: 'Schedule', section: 'agenda', related: [] },
+  { label: 'Website & embeds', section: 'embeds', related: [] },
 ] as const
 
 function usePath() {
@@ -254,12 +252,14 @@ function AdminShell({ path, eventSlug, unscoped, session, onSignedOut, children 
         <EventSwitcher eventSlug={eventSlug} session={session} closeNavigation={() => setMobileOpen(false)} />
         <nav className="sidebar-nav" aria-label="Workspace navigation">
           <p>Program</p>
-          {adminNav.map(([label, section]) => { const href = section ? `${adminBase}/${section}` : adminBase; return <Link key={label} to={href} onClick={() => setMobileOpen(false)} className={path === href || (section && path.startsWith(`${href}/`)) ? 'active' : ''}><NavIcon label={label} />{label}</Link> })}
-          <p>Distribution</p>
-          <Link to={programPath} onClick={() => setMobileOpen(false)}><NavIcon label="Program" />Public program <span className="external">↗</span></Link>
-          <p>Role workspaces</p>
-          <Link to={eventWorkspacePath(eventSlug, 'reviewer')} onClick={() => setMobileOpen(false)}><NavIcon label="Reviewer" />Reviewer workspace <span className="external">↗</span></Link>
-          <Link to={eventWorkspacePath(eventSlug, 'speaker')} onClick={() => setMobileOpen(false)}><NavIcon label="Speaker portal" />Speaker workspace <span className="external">↗</span></Link>
+          {adminNav.map(({ label, section, related }) => {
+            const href = section ? `${adminBase}/${section}` : adminBase
+            const relatedActive = related.some((candidate) => path === `${adminBase}/${candidate}` || path.startsWith(`${adminBase}/${candidate}/`))
+            const active = path === href || Boolean(section && path.startsWith(`${href}/`)) || relatedActive
+            return <Link key={label} to={href} onClick={() => setMobileOpen(false)} className={active ? 'active' : ''} ariaCurrent={active ? 'page' : undefined}><NavIcon label={label} />{label}</Link>
+          })}
+          <p>Preview</p>
+          <details className="workspace-preview-menu"><summary><NavIcon label="Preview" />Preview workspaces<span aria-hidden="true">⌄</span></summary><div><Link to={programPath} onClick={() => setMobileOpen(false)}>Public program <span className="external">↗</span></Link><Link to={eventWorkspacePath(eventSlug, 'reviewer')} onClick={() => setMobileOpen(false)}>Reviewer workspace <span className="external">↗</span></Link><Link to={eventWorkspacePath(eventSlug, 'speaker')} onClick={() => setMobileOpen(false)}>Speaker workspace <span className="external">↗</span></Link></div></details>
         </nav>
         <div className="sidebar-footer"><span className="avatar">{session.user.displayName.split(/\s+/).map((part) => part[0]).join('').slice(0, 2).toUpperCase()}</span><span><strong>{session.user.displayName}</strong><small>Organizer</small></span><SignOutButton onSignedOut={onSignedOut} className="sidebar-sign-out" /></div>
       </aside>
@@ -299,7 +299,7 @@ function OrganizerAccess({ path, requestedEventSlug, unscoped, children }: { pat
 }
 
 function NavIcon({ label }: { label: string }) {
-  const icons: Record<string, string> = { Overview: '⌂', 'Call for Proposals': '✎', Abstracts: '▤', Reviewers: '✓', Speakers: '♙', Content: '□', Agenda: '▦', Embeds: '◇', 'Design system': '◫', Program: '↗', Reviewer: '✓', 'Speaker portal': '♙' }
+  const icons: Record<string, string> = { Overview: '⌂', 'Call for proposals': '✎', 'Proposals & reviews': '▤', Speakers: '♙', 'Content & files': '▱', Schedule: '▦', 'Website & embeds': '◇', Preview: '↗' }
   return <span aria-hidden="true">{icons[label]}</span>
 }
 

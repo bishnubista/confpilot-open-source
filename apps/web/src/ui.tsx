@@ -44,3 +44,7 @@ export function Link({ to, className, children, onClick, ariaCurrent, ariaLabel 
 export function PageHeader({ eyebrow, title, description, action }: { eyebrow: string; title: string; description: string; action?: ReactNode }) {
   return <div className="page-header"><div><p>{eyebrow}</p><h1>{title}</h1><span>{description}</span></div>{action}</div>
 }
+
+export function TaskTabs({ label, tabs, active, onChange }: { label: string; tabs: readonly { id: string; label: string }[]; active: string; onChange: (id: string) => void }) {
+  return <nav className="task-tabs" aria-label={label}>{tabs.map((tab) => <button key={tab.id} type="button" aria-pressed={active === tab.id} onClick={() => onChange(tab.id)}>{tab.label}</button>)}</nav>
+}

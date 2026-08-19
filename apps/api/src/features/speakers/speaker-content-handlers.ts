@@ -351,6 +351,7 @@ function serviceError(context: RouteContext, error: unknown) {
   if (error instanceof SpeakerReminderIneligibleError) {
     const response = {
       NO_CONTACT_EMAIL: ["REMINDER_CONTACT_REQUIRED", "Add a valid speaker contact email before queueing a reminder."],
+      UNSAFE_RECIPIENT: ["REMINDER_CONTACT_REQUIRED", "Add a valid speaker contact email before queueing a reminder."],
       SPEAKER_ACCESS_UNAVAILABLE: ["REMINDER_ACCESS_UNAVAILABLE", "Link the speaker to a verified event account before queueing portal reminders."],
       SPEAKER_DECLINED: ["REMINDER_DECLINED", "A declined speaker cannot receive readiness reminders."],
       NO_OUTSTANDING_ITEMS: ["NO_REMINDER_NEEDED", "This template has no outstanding items to include for the selected speaker."],

@@ -1,16 +1,17 @@
-import type {
-  SpeakerReminderEnqueue,
-  SpeakerReminderEnqueueResponse,
-  SpeakerReminderTemplate,
-  SpeakerReminderTemplateKey,
-  SpeakerReminderTemplateListResponse,
+import {
+  normalizedEmailSchema,
+  type SpeakerReminderEnqueue,
+  type SpeakerReminderEnqueueResponse,
+  type SpeakerReminderTemplate,
+  type SpeakerReminderTemplateKey,
+  type SpeakerReminderTemplateListResponse,
 } from "@confpilot/contracts";
 
 import { enqueueMessage, MessageDedupeConflictError, publicOutboxState } from "./features/messaging/message-outbox";
 import type { Database } from "./runtime/database";
 import { constraintMessage } from "./runtime/database";
 
-interface SpeakerReminderRow {
+export interface SpeakerReminderRecipient {
   eventId: string;
   eventSlug: string;
   eventName: string;
@@ -25,14 +26,14 @@ interface SpeakerReminderRow {
   headshotObjectKey: string | null;
 }
 
-interface TaskRow {
+export interface SpeakerReminderTask {
   id: string;
   label: string;
   dueAt: string | null;
   sessionTitle: string;
 }
 
-interface SessionRow {
+export interface SpeakerReminderSession {
   id: string;
   title: string;
   deliverablesStatus: "missing" | "submitted" | "ready";
@@ -41,13 +42,13 @@ interface SessionRow {
 export const SPEAKER_REMINDER_TEMPLATES = [
   {
     key: "speaker.readiness-reminder",
-    revision: 1,
+    revision: 2,
     label: "Readiness reminder",
     description: "Lists the speaker's current incomplete profile, release, headshot, task, and deliverable items.",
   },
   {
     key: "speaker.task-reminder",
-    revision: 1,
+    revision: 2,
     label: "Open-task reminder",
     description: "Lists only the speaker's current open readiness tasks and their recorded due times.",
   },
@@ -58,8 +59,19 @@ export class SpeakerReminderTemplateNotFoundError extends Error {}
 export class SpeakerReminderIdempotencyConflictError extends Error {}
 export class SpeakerReminderAuthorizationError extends Error {}
 
+export interface SpeakerReminderPreview {
+  speakerId: string;
+  recipientName: string;
+  recipientEmail: string;
+  templateKey: SpeakerReminderTemplateKey;
+  templateRevision: number;
+  subject: string;
+  text: string;
+}
+
 export type SpeakerReminderIneligibleReason =
   | "NO_CONTACT_EMAIL"
+  | "UNSAFE_RECIPIENT"
   | "SPEAKER_ACCESS_UNAVAILABLE"
   | "SPEAKER_DECLINED"
   | "NO_OUTSTANDING_ITEMS";
@@ -92,12 +104,21 @@ function portalPath(eventSlug: string) {
   return `/events/${encodeURIComponent(eventSlug)}/speaker`;
 }
 
-function taskLine(task: TaskRow) {
-  const item = `${task.sessionTitle} — ${task.label}`;
+function ellipsize(value: string, maximum: number) {
+  if (value.length <= maximum) return value;
+  return `${value.slice(0, maximum - 1).trimEnd()}…`;
+}
+
+function taskLine(task: SpeakerReminderTask) {
+  const item = `${ellipsize(task.sessionTitle, 300)} — ${ellipsize(task.label, 300)}`;
   return task.dueAt ? `${item} (due ${task.dueAt})` : `${item} (no due time recorded)`;
 }
 
-function renderReadinessReminder(speaker: SpeakerReminderRow, tasks: TaskRow[], sessions: SessionRow[]) {
+function renderReadinessReminder(
+  speaker: SpeakerReminderRecipient,
+  tasks: SpeakerReminderTask[],
+  sessions: SpeakerReminderSession[],
+) {
   const outstanding: string[] = [];
   if (speaker.workflowStatus !== "confirmed") outstanding.push("Confirm your participation");
   if (speaker.profileStatus !== "ready") outstanding.push("Complete your speaker profile");
@@ -106,15 +127,17 @@ function renderReadinessReminder(speaker: SpeakerReminderRow, tasks: TaskRow[], 
   outstanding.push(...tasks.map((task) => taskLine(task)));
   outstanding.push(...sessions
     .filter((session) => session.deliverablesStatus !== "ready")
-    .map((session) => `Complete deliverables for “${session.title}”`));
+    .map((session) => `Complete deliverables for “${ellipsize(session.title, 300)}”`));
   if (outstanding.length === 0) throw new SpeakerReminderIneligibleError("NO_OUTSTANDING_ITEMS");
+  const visible = outstanding.slice(0, 20);
+  if (outstanding.length > visible.length) visible.push(`And ${outstanding.length - visible.length} more outstanding items`);
   return {
     subject: `${speaker.eventName}: speaker readiness reminder`,
     text: [
       `Hello ${speaker.name},`,
       "",
       `The ${speaker.eventName} organizer recorded these outstanding speaker-readiness items:`,
-      ...outstanding.map((item) => `- ${item}`),
+      ...visible.map((item) => `- ${item}`),
       "",
       `Sign in to this ConfPilot instance and open ${portalPath(speaker.eventSlug)} to review the canonical status.`,
       "",
@@ -123,15 +146,17 @@ function renderReadinessReminder(speaker: SpeakerReminderRow, tasks: TaskRow[], 
   };
 }
 
-function renderTaskReminder(speaker: SpeakerReminderRow, tasks: TaskRow[]) {
+function renderTaskReminder(speaker: SpeakerReminderRecipient, tasks: SpeakerReminderTask[]) {
   if (tasks.length === 0) throw new SpeakerReminderIneligibleError("NO_OUTSTANDING_ITEMS");
+  const visible = tasks.slice(0, 20);
   return {
     subject: `${speaker.eventName}: open speaker tasks`,
     text: [
       `Hello ${speaker.name},`,
       "",
       `The ${speaker.eventName} organizer recorded these open speaker tasks:`,
-      ...tasks.map((task) => `- ${taskLine(task)}`),
+      ...visible.map((task) => `- ${taskLine(task)}`),
+      ...(tasks.length > visible.length ? [`- And ${tasks.length - visible.length} more open tasks`] : []),
       "",
       `Sign in to this ConfPilot instance and open ${portalPath(speaker.eventSlug)} to review the canonical status.`,
       "",
@@ -140,15 +165,40 @@ function renderTaskReminder(speaker: SpeakerReminderRow, tasks: TaskRow[]) {
   };
 }
 
-export async function enqueueSpeakerReminder(
+export function renderSpeakerReminderPreview(
+  speaker: SpeakerReminderRecipient,
+  tasks: SpeakerReminderTask[],
+  sessions: SpeakerReminderSession[],
+  templateKey: SpeakerReminderTemplateKey,
+): SpeakerReminderPreview {
+  const template = SPEAKER_REMINDER_TEMPLATES.find((candidate) => candidate.key === templateKey);
+  if (!template) throw new SpeakerReminderTemplateNotFoundError();
+  if (!speaker.userId || speaker.hasSpeakerMembership !== 1) {
+    throw new SpeakerReminderIneligibleError("SPEAKER_ACCESS_UNAVAILABLE");
+  }
+  if (speaker.workflowStatus === "declined") throw new SpeakerReminderIneligibleError("SPEAKER_DECLINED");
+  if (!speaker.contactEmail.trim()) throw new SpeakerReminderIneligibleError("NO_CONTACT_EMAIL");
+  const parsedEmail = normalizedEmailSchema.safeParse(speaker.contactEmail);
+  if (!parsedEmail.success) throw new SpeakerReminderIneligibleError("UNSAFE_RECIPIENT");
+  const rendered = templateKey === "speaker.task-reminder"
+    ? renderTaskReminder(speaker, tasks)
+    : renderReadinessReminder(speaker, tasks, sessions);
+  return {
+    speakerId: speaker.speakerId,
+    recipientName: speaker.name,
+    recipientEmail: parsedEmail.data,
+    templateKey: template.key,
+    templateRevision: template.revision,
+    subject: rendered.subject,
+    text: rendered.text,
+  };
+}
+
+export async function previewSpeakerReminder(
   db: Database,
   eventId: string,
-  actorUserId: string,
-  input: SpeakerReminderEnqueue,
-  now: string,
-): Promise<SpeakerReminderEnqueueResponse> {
-  const template = SPEAKER_REMINDER_TEMPLATES.find((candidate) => candidate.key === input.templateKey);
-  if (!template) throw new SpeakerReminderTemplateNotFoundError();
+  input: Pick<SpeakerReminderEnqueue, "speakerId" | "templateKey">,
+): Promise<SpeakerReminderPreview> {
   const speaker = await db.prepare(`SELECT
       event.id AS eventId, event.slug AS eventSlug, event.name AS eventName,
       speaker.id AS speakerId, speaker.user_id AS userId, speaker.name,
@@ -161,13 +211,8 @@ export async function enqueueSpeakerReminder(
     FROM speakers AS speaker
     INNER JOIN events AS event ON event.id = speaker.event_id
     WHERE speaker.event_id = ? AND speaker.id = ? LIMIT 1`)
-    .bind(eventId, input.speakerId).first<SpeakerReminderRow>();
+    .bind(eventId, input.speakerId).first<SpeakerReminderRecipient>();
   if (!speaker) throw new SpeakerReminderNotFoundError();
-  if (!speaker.userId || speaker.hasSpeakerMembership !== 1) {
-    throw new SpeakerReminderIneligibleError("SPEAKER_ACCESS_UNAVAILABLE");
-  }
-  if (speaker.workflowStatus === "declined") throw new SpeakerReminderIneligibleError("SPEAKER_DECLINED");
-  if (!speaker.contactEmail.trim()) throw new SpeakerReminderIneligibleError("NO_CONTACT_EMAIL");
 
   const taskResult = await db.prepare(`SELECT task.id, task.label, task.due_at AS dueAt,
       session.title AS sessionTitle
@@ -176,17 +221,25 @@ export async function enqueueSpeakerReminder(
       ON session.event_id = task.event_id AND session.id = task.program_session_id
     WHERE task.event_id = ? AND task.speaker_id = ? AND task.state = 'open'
     ORDER BY task.due_at IS NULL, task.due_at, session.title, task.label, task.id`)
-    .bind(eventId, input.speakerId).all<TaskRow>();
+    .bind(eventId, input.speakerId).all<SpeakerReminderTask>();
   const sessionResult = await db.prepare(`SELECT session.id, session.title,
       session.deliverables_status AS deliverablesStatus
     FROM session_presenters AS presenter
     INNER JOIN program_sessions AS session
       ON session.event_id = presenter.event_id AND session.id = presenter.program_session_id
     WHERE presenter.event_id = ? AND presenter.speaker_id = ?
-    ORDER BY session.title, session.id`).bind(eventId, input.speakerId).all<SessionRow>();
-  const rendered = input.templateKey === "speaker.task-reminder"
-    ? renderTaskReminder(speaker, taskResult.results)
-    : renderReadinessReminder(speaker, taskResult.results, sessionResult.results);
+    ORDER BY session.title, session.id`).bind(eventId, input.speakerId).all<SpeakerReminderSession>();
+  return renderSpeakerReminderPreview(speaker, taskResult.results, sessionResult.results, input.templateKey);
+}
+
+export async function enqueueSpeakerReminder(
+  db: Database,
+  eventId: string,
+  actorUserId: string,
+  input: SpeakerReminderEnqueue,
+  now: string,
+): Promise<SpeakerReminderEnqueueResponse> {
+  const preview = await previewSpeakerReminder(db, eventId, input);
   let row;
   try {
     row = await enqueueMessage(db, {
@@ -194,12 +247,12 @@ export async function enqueueSpeakerReminder(
       actorUserId,
       dedupeKey: await reminderDedupeKey(input),
       intent: "speaker_reminder",
-      recipientEmail: speaker.contactEmail,
-      recipientName: speaker.name,
-      templateKey: template.key,
-      templateRevision: template.revision,
-      subject: rendered.subject,
-      text: rendered.text,
+      recipientEmail: preview.recipientEmail,
+      recipientName: preview.recipientName,
+      templateKey: preview.templateKey,
+      templateRevision: preview.templateRevision,
+      subject: preview.subject,
+      text: preview.text,
       now: utcSecond(now),
     });
   } catch (error) {
@@ -211,9 +264,9 @@ export async function enqueueSpeakerReminder(
   }
   return {
     messageId: row.id,
-    speakerId: speaker.speakerId,
-    templateKey: template.key as SpeakerReminderTemplateKey,
-    templateRevision: template.revision,
+    speakerId: preview.speakerId,
+    templateKey: preview.templateKey,
+    templateRevision: preview.templateRevision,
     outboxState: publicOutboxState(row.state),
   };
 }

@@ -4,6 +4,7 @@ export * from "./session-format";
 export * from "./speaker-content";
 export * from "./agenda";
 export * from "./readiness";
+export * from "./program-operator";
 export * from "./communications";
 export * from "./reviewer-invitations";
 export * from "./speaker-claims";
