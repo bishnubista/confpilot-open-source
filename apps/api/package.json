@@ -36,14 +36,14 @@
     "hono": "^4.13.1"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^5.20260810.1",
+    "@cloudflare/workers-types": "^5.20260827.1",
     "@confpilot/web": "workspace:*",
     "@types/better-sqlite3": "^9.6.0",
-    "@types/node": "^26.2.0",
+    "@types/node": "^26.4.0",
     "esbuild": "^0.28.2",
     "miniflare": "4.20260730.0",
     "typescript": "^5.9.3",
-    "vitest": "^4.0.18",
-    "wrangler": "4.118.0"
+    "vitest": "^4.1.11",
+    "wrangler": "4.126.0"
   }
 }
